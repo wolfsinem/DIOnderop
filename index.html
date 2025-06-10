@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>De Grote DIO Ontsnappingskalender</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
@@ -13,230 +15,337 @@
             font-family: 'Inter', sans-serif;
             -webkit-tap-highlight-color: transparent;
         }
-        /* Stijl voor afgevinkte dagen */
         .day-checked {
-            background-color: #374151 !important; /* gray-700 */
+            background-color: #374151 !important;
             text-decoration: line-through;
-            color: #6b7280; /* gray-500 */
+            color: #6b7280;
             transform: scale(0.95);
             opacity: 0.6;
         }
-        /* Animatie voor elementen die verschijnen */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .fade-in {
-            animation: fadeIn 0.5s ease-out forwards;
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        .fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        .shake { animation: shake 0.3s ease-in-out forwards; }
+        .reason-item {
+            background-color: #1f2937;
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border-left: 3px solid #14b8a6;
         }
     </style>
 </head>
 <body class="bg-gray-900 text-white antialiased">
 
-    <div class="container mx-auto p-4 md:p-8 max-w-4xl">
+    <!-- Login Overlay -->
+    <div id="login-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-95 backdrop-blur-sm z-50 flex items-center justify-center">
+        <div class="w-full max-w-xs text-center">
+            <h2 class="text-2xl font-bold text-white mb-4">Voer de geheime code in</h2>
+            <input type="password" id="password-input" class="w-full bg-gray-700 rounded-lg p-3 text-white text-center text-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500" placeholder="••••••">
+            <button id="login-btn" class="w-full mt-4 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">Inloggen</button>
+            <p id="error-message" class="text-red-400 mt-4 h-5"></p>
+        </div>
+    </div>
 
-        <!-- Header -->
-        <header class="text-center mb-8">
-            <h1 class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-blue-500 mb-2">De Grote DIO Ontsnapping</h1>
-            <p class="text-gray-400 text-lg">Aftellen naar de vrijheid!</p>
-        </header>
+    <!-- Main Content (Hidden by default) -->
+    <div id="main-content" class="hidden">
+        <div class="container mx-auto p-4 md:p-8 max-w-4xl">
+            <!-- Header -->
+            <header class="relative text-center mb-8">
+                <h1 class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-blue-500 mb-2">De Grote DIO Ontsnapping</h1>
+                <p class="text-gray-400 text-lg">Aftellen naar de vrijheid!</p>
+                <!-- Confetti Button -->
+                <div class="absolute top-0 right-0">
+                    <button id="confetti-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold p-3 rounded-full shadow-lg transform hover:scale-110 transition-transform" title="Ontladingsknop">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.59l-3.21-8.82A3 3 0 0 0 14 9z"></path></svg>
+                    </button>
+                </div>
+            </header>
 
-        <!-- Countdown Timer -->
-        <div id="countdown-widget" class="bg-gray-800 rounded-xl p-6 mb-8 shadow-2xl border border-gray-700 fade-in">
-            <h2 class="text-xl font-bold text-center mb-4 text-teal-400">Nog...</h2>
-            <div id="countdown-timer" class="grid grid-cols-4 gap-4 text-center">
-                <div>
-                    <div id="days" class="text-4xl md:text-6xl font-extrabold text-white">00</div>
-                    <div class="text-sm text-gray-400">Dagen</div>
+            <!-- Countdown Timer -->
+            <div id="countdown-widget" class="bg-gray-800 rounded-xl p-6 mb-8 shadow-2xl border border-gray-700 fade-in">
+                <h2 class="text-xl font-bold text-center mb-4 text-teal-400">Nog...</h2>
+                <div id="countdown-timer" class="grid grid-cols-4 gap-4 text-center">
+                    <div>
+                        <div id="days" class="text-4xl md:text-6xl font-extrabold text-white">00</div>
+                        <div class="text-sm text-gray-400">Dagen</div>
+                    </div>
+                    <div>
+                        <div id="hours" class="text-4xl md:text-6xl font-extrabold text-white">00</div>
+                        <div class="text-sm text-gray-400">Uren</div>
+                    </div>
+                    <div>
+                        <div id="minutes" class="text-4xl md:text-6xl font-extrabold text-white">00</div>
+                        <div class="text-sm text-gray-400">Minuten</div>
+                    </div>
+                    <div>
+                        <div id="seconds" class="text-4xl md:text-6xl font-extrabold text-white">00</div>
+                        <div class="text-sm text-gray-400">Seconden</div>
+                    </div>
                 </div>
-                <div>
-                    <div id="hours" class="text-4xl md:text-6xl font-extrabold text-white">00</div>
-                    <div class="text-sm text-gray-400">Uren</div>
+            </div>
+            
+            <!-- Widgets -->
+            <div class="grid md:grid-cols-2 gap-8 mb-8">
+                <div class="bg-gray-800 rounded-xl p-6 shadow-2xl border border-gray-700 fade-in" style="animation-delay: 0.1s;">
+                    <h2 class="text-lg font-bold mb-3 text-center">Toxiciteitsmeter</h2>
+                    <div class="w-full bg-gray-700 rounded-full h-4">
+                        <div id="toxicity-bar" class="bg-gradient-to-r from-red-500 to-orange-500 h-4 rounded-full transition-all duration-500 ease-out"></div>
+                    </div>
+                    <p id="toxicity-text" class="text-center text-sm mt-2 text-gray-400">Niveau daalt...</p>
                 </div>
-                <div>
-                    <div id="minutes" class="text-4xl md:text-6xl font-extrabold text-white">00</div>
-                    <div class="text-sm text-gray-400">Minuten</div>
+                <div class="bg-gray-800 rounded-xl p-6 shadow-2xl border border-gray-700 fade-in" style="animation-delay: 0.2s;">
+                    <h2 class="text-lg font-bold mb-3 text-center">Voortgang</h2>
+                    <p id="progress-counter" class="text-center text-3xl font-bold text-white mt-2">0/0</p>
+                    <p class="text-center text-sm text-gray-400">Dagen afgestreept</p>
                 </div>
-                <div>
-                    <div id="seconds" class="text-4xl md:text-6xl font-extrabold text-white">00</div>
-                    <div class="text-sm text-gray-400">Seconden</div>
+                <div class="bg-gray-800 rounded-xl p-6 shadow-2xl border border-gray-700 fade-in" style="animation-delay: 0.3s;">
+                    <h2 class="text-lg font-bold mb-3 text-center">Vrijdag-o-Meter</h2>
+                    <div class="w-full bg-gray-700 rounded-full h-4">
+                        <div id="friday-bar" class="bg-gradient-to-r from-teal-400 to-blue-500 h-4 rounded-full transition-all duration-500 ease-out"></div>
+                    </div>
+                    <p id="friday-text" class="text-center text-sm mt-2 text-gray-400">Nog efkes...</p>
                 </div>
+                <div class="bg-gray-800 rounded-xl p-6 shadow-2xl border border-gray-700 fade-in" style="animation-delay: 0.4s;">
+                     <h2 class="text-lg font-bold mb-2 text-center">Quote van de Dag</h2>
+                     <p id="quote" class="text-center text-gray-300 italic">"..."</p>
+                </div>
+            </div>
+
+            <!-- Calendar Grid -->
+            <div id="calendar-grid" class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 gap-2 md:gap-4 fade-in" style="animation-delay: 0.5s;"></div>
+            
+            <!-- Reason of the Day Widget -->
+            <div class="mt-8 bg-gray-800 rounded-xl p-6 shadow-2xl border border-gray-700 fade-in" style="animation-delay: 0.6s;">
+                <h2 class="text-lg font-bold mb-3 text-center">Redenen om te Vertrekken</h2>
+                <div class="mb-4">
+                    <textarea id="reason-input" class="w-full bg-gray-700 rounded-lg p-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500" rows="2" placeholder="Wat is de reden van vandaag?"></textarea>
+                    <button id="save-reason-btn" class="w-full mt-2 bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Opslaan</button>
+                </div>
+                <div id="reasons-list" class="max-h-40 overflow-y-auto"></div>
             </div>
         </div>
-        
-        <!-- Widgets -->
-        <div class="grid md:grid-cols-3 gap-8 mb-8">
-            <!-- Toxicity Meter -->
-            <div class="bg-gray-800 rounded-xl p-6 shadow-2xl border border-gray-700 fade-in" style="animation-delay: 0.1s;">
-                <h2 class="text-lg font-bold mb-3 text-center">Toxiciteitsmeter</h2>
-                <div class="w-full bg-gray-700 rounded-full h-4">
-                    <div id="toxicity-bar" class="bg-gradient-to-r from-red-500 to-orange-500 h-4 rounded-full transition-all duration-500 ease-out"></div>
-                </div>
-                <p id="toxicity-text" class="text-center text-sm mt-2 text-gray-400">Niveau daalt...</p>
-            </div>
-
-            <!-- Progress Counter -->
-            <div class="bg-gray-800 rounded-xl p-6 shadow-2xl border border-gray-700 fade-in" style="animation-delay: 0.2s;">
-                <h2 class="text-lg font-bold mb-3 text-center">Voortgang</h2>
-                <p id="progress-counter" class="text-center text-3xl font-bold text-white mt-2">0/0</p>
-                <p class="text-center text-sm text-gray-400">Dagen afgestreept</p>
-            </div>
-
-            <!-- Quote of the Day -->
-            <div class="bg-gray-800 rounded-xl p-6 shadow-2xl border border-gray-700 fade-in" style="animation-delay: 0.3s;">
-                 <h2 class="text-lg font-bold mb-2 text-center">Quote van de Dag</h2>
-                 <p id="quote" class="text-center text-gray-300 italic">"..."</p>
-            </div>
-        </div>
-
-        <!-- Advent Calendar Grid -->
-        <div id="calendar-grid" class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 gap-2 md:gap-4 fade-in" style="animation-delay: 0.4s;">
-            <!-- Dagen worden hier door JavaScript ingevoegd -->
-        </div>
-
     </div>
 
     <script>
-        // --- CONFIGURATIE ---
-        // Pas hier de einddatum aan. Formaat: JAAR-MAAND-DAGTUREN:MINUTEN:SECONDEN
+        // --- CONFIGURATION ---
         const endDate = new Date('2025-08-31T17:00:00');
+        const correctCode = 'cG9lc2pl'; // btoa('poesje')
+        const quotes = [ "Nog efkes en dan is het 'Cege-Klaar'.", "Mijn ziel was te leasen, maar het contract loopt af.", "Binnenkort is de enige 'agile' beweging die ik maak die naar de voordeur.", "Ze zochten een 'hands-on mentaliteit'. Binnenkort krijgen ze twee middelvingers.", "Cegeka. Waar de 'ka' blijkbaar voor 'kafkaësk' staat.", "Nog een paar dagen en dan kan ik eindelijk slapen zonder te dromen over Jira tickets.", "Ik ruil mijn badge in voor een leven.", "Het licht aan het einde van de tunnel is geen aankomende trein, het is de uitgang.", "Ik heb mijn 'out of office' al ingesteld. Voor permanent.", "'t Is ni da'k ni wil werken, 't is da'k *hier* ni wil werken.", "Ze zeiden 'in close cooperation', maar het voelde meer als 'in close observation'.", "Mijn motivatie is gaan lopen. Ik ga ze nu achterna.", "Ik dacht 'Carpe Diem', dus ik heb mijn C4 getekend.", "Nog een paar meetings uitzitten en dan is het gedaan met de 'corporate nonsense'.", "Exit-gesprek? 't Was tof, maar niet tof genoeg." ];
 
-        // Lijst met quotes. Voeg gerust meer toe!
-        const quotes = [
-            "Nog efkes en dan is het 'Cege-Klaar'.",
-            "Mijn ziel was te leasen, maar het contract loopt af.",
-            "Binnenkort is de enige 'agile' beweging die ik maak die naar de voordeur.",
-            "Ze zochten een 'hands-on mentaliteit'. Binnenkort krijgen ze twee middelvingers.",
-            "Cegeka. Waar de 'ka' blijkbaar voor 'kafkaësk' staat.",
-            "Nog een paar maanden en dan kan ik eindelijk slapen zonder te dromen over Jira tickets.",
-            "Het licht aan het einde van de tunnel is geen aankomende trein, het is de uitgang.",
-            "Ik heb mijn 'out of office' al ingesteld. Voor permanent.",
-            "'t Is ni da'k ni wil werken, 't is da'k *hier* ni wil werken.",
-            "Ze zeiden 'in close cooperation', maar het voelde meer als 'in close observation'.",
-            "Mijn motivatie is gaan lopen. Ik ga ze nu achterna.",
-            "Ik dacht 'Carpe Diem', dus ik heb mijn C4 getekend.",
-            "Exit-gesprek? 't Was tof, maar niet tof genoeg."
-        ];
-
-        // --- APPLICATIE LOGICA ---
+        // --- APPLICATION LOGIC ---
         document.addEventListener('DOMContentLoaded', () => {
-            const calendarGridEl = document.getElementById('calendar-grid');
-            const quoteEl = document.getElementById('quote');
-            const toxicityBarEl = document.getElementById('toxicity-bar');
-            const toxicityTextEl = document.getElementById('toxicity-text');
-            const progressCounterEl = document.getElementById('progress-counter');
-            
-            let checkedDays = JSON.parse(localStorage.getItem('checkedDays')) || [];
-            let totalDays = 0;
+            const loginOverlay = document.getElementById('login-overlay');
+            const mainContent = document.getElementById('main-content');
+            const passwordInput = document.getElementById('password-input');
+            const loginBtn = document.getElementById('login-btn');
+            const errorMessage = document.getElementById('error-message');
 
-            // Genereer de kalender
-            function generateCalendar() {
-                const today = new Date();
-                today.setHours(0, 0, 0, 0); // Begin van de dag
-                let currentDate = new Date(today);
+            function startApp() {
+                loginOverlay.style.display = 'none';
+                mainContent.classList.remove('hidden');
+                mainContent.classList.add('fade-in');
                 
-                // Zorg ervoor dat de kalender niet leeg is als we na de einddatum kijken
-                if (today > endDate) {
-                    currentDate = new Date(endDate);
-                    currentDate.setDate(currentDate.getDate() - 30); // Toon laatste 30 dagen als voorbeeld
+                const calendarGridEl = document.getElementById('calendar-grid');
+                const quoteEl = document.getElementById('quote');
+                const toxicityBarEl = document.getElementById('toxicity-bar');
+                const toxicityTextEl = document.getElementById('toxicity-text');
+                const progressCounterEl = document.getElementById('progress-counter');
+                const confettiBtn = document.getElementById('confetti-btn');
+                const reasonInput = document.getElementById('reason-input');
+                const saveReasonBtn = document.getElementById('save-reason-btn');
+                const reasonsListEl = document.getElementById('reasons-list');
+                const fridayBarEl = document.getElementById('friday-bar');
+                const fridayTextEl = document.getElementById('friday-text');
+
+                let checkedDays = JSON.parse(localStorage.getItem('checkedDays_dio')) || [];
+                let savedReasons = JSON.parse(localStorage.getItem('savedReasons_dio')) || [];
+                let totalDays = 0;
+                
+                const synth = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 1 } }).toDestination();
+
+                function generateCalendar() {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    let currentDate = new Date(today);
+                    if (today > endDate) {
+                        currentDate = new Date(endDate);
+                        currentDate.setDate(currentDate.getDate() - 30);
+                    }
+                    while (currentDate <= endDate) {
+                        totalDays++;
+                        const dayEl = document.createElement('div');
+                        const dateString = currentDate.toISOString().split('T')[0];
+                        dayEl.dataset.date = dateString;
+                        dayEl.className = 'day-item cursor-pointer flex flex-col items-center justify-center aspect-square bg-gray-800 rounded-lg p-2 transition-all duration-200 hover:bg-teal-600 hover:scale-105 border border-gray-700';
+                        const month = currentDate.toLocaleString('nl-NL', { month: 'short' }).replace('.', '');
+                        const dayOfMonth = currentDate.getDate();
+                        dayEl.innerHTML = `<span class="font-bold text-xl">${dayOfMonth}</span><span class="text-xs uppercase text-gray-400">${month}</span>`;
+                        if (checkedDays.includes(dateString)) { dayEl.classList.add('day-checked'); }
+                        dayEl.addEventListener('click', () => toggleDay(dateString, dayEl));
+                        calendarGridEl.appendChild(dayEl);
+                        currentDate.setDate(currentDate.getDate() + 1);
+                    }
+                    updateWidgets();
+                    renderReasons();
                 }
 
-                while (currentDate <= endDate) {
-                    totalDays++;
-                    const dayEl = document.createElement('div');
-                    const dateString = currentDate.toISOString().split('T')[0];
-                    dayEl.dataset.date = dateString;
-                    dayEl.className = 'day-item cursor-pointer flex flex-col items-center justify-center aspect-square bg-gray-800 rounded-lg p-2 transition-all duration-200 hover:bg-teal-600 hover:scale-105 border border-gray-700';
+                function toggleDay(dateString, element) {
+                    const index = checkedDays.indexOf(dateString);
+                    if (index > -1) {
+                        checkedDays.splice(index, 1);
+                        element.classList.remove('day-checked');
+                    } else {
+                        checkedDays.push(dateString);
+                        element.classList.add('day-checked');
+                        synth.triggerAttackRelease("C4", "8n");
+                    }
+                    localStorage.setItem('checkedDays_dio', JSON.stringify(checkedDays));
+                    updateWidgets();
+                }
+                
+                function updateWidgets() {
+                    const checkedCount = checkedDays.length;
+                    const progress = totalDays > 0 ? (checkedCount / totalDays) : 0;
+                    const toxicityLevel = 100 - (progress * 100);
+                    toxicityBarEl.style.width = `${toxicityLevel}%`;
+                    if(toxicityLevel <= 0) {
+                         toxicityTextEl.textContent = "Ontsnapping voltooid!";
+                         toxicityBarEl.classList.remove('from-red-500', 'to-orange-500');
+                         toxicityBarEl.classList.add('from-green-400', 'to-blue-500');
+                    } else {
+                         toxicityTextEl.textContent = `Niveau: ${toxicityLevel.toFixed(0)}%`;
+                    }
+                    progressCounterEl.textContent = `${checkedCount}/${totalDays}`;
+                }
 
-                    const month = currentDate.toLocaleString('nl-NL', { month: 'short' }).replace('.', '');
-                    const dayOfMonth = currentDate.getDate();
+                function getRemainingCalendarDays(end) {
+                    const now = new Date();
+                    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                    const startOfEndDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+                    if (startOfToday > startOfEndDay) return 0;
+                    // +1 to include today in the count
+                    return Math.round((startOfEndDay - startOfToday) / (1000 * 60 * 60 * 24)) + 1;
+                }
 
-                    dayEl.innerHTML = `
-                        <span class="font-bold text-xl">${dayOfMonth}</span>
-                        <span class="text-xs uppercase text-gray-400">${month}</span>
-                    `;
+                function updateCountdown() {
+                    const now = new Date();
+                    const distance = endDate - now;
 
-                    if (checkedDays.includes(dateString)) {
-                        dayEl.classList.add('day-checked');
+                    if (distance < 0) {
+                        clearInterval(intervalId);
+                        document.getElementById('countdown-widget').innerHTML = `<div class="text-center text-2xl font-bold p-4 text-green-400">Gefeliciteerd, de ontsnapping is een feit!</div>`;
+                        return;
                     }
 
-                    dayEl.addEventListener('click', () => toggleDay(dateString, dayEl));
-                    calendarGridEl.appendChild(dayEl);
+                    const days = getRemainingCalendarDays(endDate);
+                    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-                    currentDate.setDate(currentDate.getDate() + 1);
+                    document.getElementById('days').textContent = String(days).padStart(2, '0');
+                    document.getElementById('hours').textContent = String(hours).padStart(2, '0');
+                    document.getElementById('minutes').textContent = String(minutes).padStart(2, '0');
+                    document.getElementById('seconds').textContent = String(seconds).padStart(2, '0');
                 }
-                updateWidgets();
-            }
-
-            // Vink een dag af of aan
-            function toggleDay(dateString, element) {
-                const index = checkedDays.indexOf(dateString);
-                if (index > -1) {
-                    checkedDays.splice(index, 1); // Uncheck
-                    element.classList.remove('day-checked');
-                } else {
-                    checkedDays.push(dateString); // Check
-                    element.classList.add('day-checked');
-                }
-                localStorage.setItem('checkedDays', JSON.stringify(checkedDays));
-                updateWidgets();
-            }
-            
-            // Update alle widgets die afhankelijk zijn van het aantal afgevinkte dagen
-            function updateWidgets() {
-                const checkedCount = checkedDays.length;
-                const progress = totalDays > 0 ? (checkedCount / totalDays) : 0;
                 
-                // Update toxiciteitsmeter
-                const toxicityLevel = 100 - (progress * 100);
-                toxicityBarEl.style.width = `${toxicityLevel}%`;
+                function updateFridayMeter() {
+                    const day = new Date().getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+                    let progress = 0;
+                    let message = "Nog efkes...";
 
-                if(toxicityLevel <= 0) {
-                     toxicityTextEl.textContent = "Ontsnapping voltooid! Geniet van de vrijheid!";
-                     toxicityBarEl.classList.remove('from-red-500', 'to-orange-500');
-                     toxicityBarEl.classList.add('from-green-400', 'to-blue-500');
-                } else {
-                     toxicityTextEl.textContent = `Niveau: ${toxicityLevel.toFixed(0)}%`;
+                    if (day === 1) progress = 20; // Maandag
+                    else if (day === 2) progress = 40; // Dinsdag
+                    else if (day === 3) progress = 60; // Woensdag
+                    else if (day === 4) progress = 80; // Donderdag
+                    else if (day === 5) { progress = 100; message = "Proost, 't is weekend!"; }
+                    else { progress = 100; message = "Weekend! Opladen!"; }
+                    
+                    fridayBarEl.style.width = `${progress}%`;
+                    fridayTextEl.textContent = message;
                 }
 
-                // Update voortgangsteller
-                progressCounterEl.textContent = `${checkedCount}/${totalDays}`;
-            }
-
-            // Update de countdown timer
-            function updateCountdown() {
-                const now = new Date().getTime();
-                const distance = endDate - now;
-
-                if (distance < 0) {
-                    clearInterval(intervalId);
-                    document.getElementById('countdown-widget').innerHTML = `<div class="text-center text-2xl font-bold p-4 text-green-400">Gefeliciteerd, de ontsnapping is een feit!</div>`;
-                    return;
+                function displayQuote() {
+                    const today = new Date().getDate();
+                    const quoteIndex = today % quotes.length;
+                    quoteEl.textContent = `"${quotes[quoteIndex]}"`;
                 }
 
-                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                function renderReasons() {
+                    reasonsListEl.innerHTML = '';
+                    if (savedReasons.length === 0) {
+                        reasonsListEl.innerHTML = '<p class="text-center text-gray-500">Nog geen redenen opgeslagen.</p>';
+                    } else {
+                        savedReasons.forEach(reason => {
+                            const reasonEl = document.createElement('div');
+                            reasonEl.className = 'reason-item fade-in';
+                            reasonEl.textContent = reason;
+                            reasonsListEl.appendChild(reasonEl);
+                        });
+                    }
+                }
 
-                document.getElementById('days').textContent = String(days).padStart(2, '0');
-                document.getElementById('hours').textContent = String(hours).padStart(2, '0');
-                document.getElementById('minutes').textContent = String(minutes).padStart(2, '0');
-                document.getElementById('seconds').textContent = String(seconds).padStart(2, '0');
-            }
-            
-            // Toon een quote
-            function displayQuote() {
-                const today = new Date().getDate();
-                const quoteIndex = today % quotes.length;
-                quoteEl.textContent = `"${quotes[quoteIndex]}"`;
+                saveReasonBtn.addEventListener('click', () => {
+                    const reasonText = reasonInput.value.trim();
+                    if (reasonText) {
+                        savedReasons.unshift(reasonText);
+                        localStorage.setItem('savedReasons_dio', JSON.stringify(savedReasons));
+                        renderReasons();
+                        reasonInput.value = '';
+                    }
+                });
+
+                confettiBtn.addEventListener('click', () => {
+                     confetti({ particleCount: 150, spread: 90, origin: { y: 0.1, x: 0.9 } });
+                });
+                
+                function tick() {
+                    updateCountdown();
+                    updateFridayMeter();
+                }
+
+                generateCalendar();
+                displayQuote();
+                const intervalId = setInterval(tick, 1000);
+                tick(); // Initial call
             }
 
-            // Start alles
-            generateCalendar();
-            displayQuote();
-            updateCountdown();
-            const intervalId = setInterval(updateCountdown, 1000);
+            // Login check logic
+            function handleLogin() {
+                const enteredPassword = passwordInput.value;
+                try {
+                    const enteredCode = btoa(enteredPassword);
+                    if (enteredCode === correctCode) {
+                        sessionStorage.setItem('isLoggedIn_dio', 'true');
+                        startApp();
+                    } else {
+                        throw new Error("Incorrect code");
+                    }
+                } catch (e) {
+                    errorMessage.textContent = 'Foute code. Probeer opnieuw.';
+                    passwordInput.classList.add('shake');
+                    passwordInput.value = '';
+                    setTimeout(() => passwordInput.classList.remove('shake'), 300);
+                }
+            }
+
+            if (sessionStorage.getItem('isLoggedIn_dio') === 'true') {
+                startApp();
+            }
+
+            loginBtn.addEventListener('click', handleLogin);
+            passwordInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    handleLogin();
+                }
+            });
         });
     </script>
 </body>
