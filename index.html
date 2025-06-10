@@ -65,7 +65,7 @@
         </div>
         
         <!-- Widgets -->
-        <div class="grid md:grid-cols-2 gap-8 mb-8">
+        <div class="grid md:grid-cols-3 gap-8 mb-8">
             <!-- Toxicity Meter -->
             <div class="bg-gray-800 rounded-xl p-6 shadow-2xl border border-gray-700 fade-in" style="animation-delay: 0.1s;">
                 <h2 class="text-lg font-bold mb-3 text-center">Toxiciteitsmeter</h2>
@@ -75,15 +75,22 @@
                 <p id="toxicity-text" class="text-center text-sm mt-2 text-gray-400">Niveau daalt...</p>
             </div>
 
-            <!-- Quote of the Day -->
+            <!-- Progress Counter -->
             <div class="bg-gray-800 rounded-xl p-6 shadow-2xl border border-gray-700 fade-in" style="animation-delay: 0.2s;">
+                <h2 class="text-lg font-bold mb-3 text-center">Voortgang</h2>
+                <p id="progress-counter" class="text-center text-3xl font-bold text-white mt-2">0/0</p>
+                <p class="text-center text-sm text-gray-400">Dagen afgestreept</p>
+            </div>
+
+            <!-- Quote of the Day -->
+            <div class="bg-gray-800 rounded-xl p-6 shadow-2xl border border-gray-700 fade-in" style="animation-delay: 0.3s;">
                  <h2 class="text-lg font-bold mb-2 text-center">Quote van de Dag</h2>
                  <p id="quote" class="text-center text-gray-300 italic">"..."</p>
             </div>
         </div>
 
         <!-- Advent Calendar Grid -->
-        <div id="calendar-grid" class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 gap-2 md:gap-4 fade-in" style="animation-delay: 0.3s;">
+        <div id="calendar-grid" class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 gap-2 md:gap-4 fade-in" style="animation-delay: 0.4s;">
             <!-- Dagen worden hier door JavaScript ingevoegd -->
         </div>
 
@@ -96,27 +103,28 @@
 
         // Lijst met quotes. Voeg gerust meer toe!
         const quotes = [
-            "De beste wraak is massaal succes.",
-            "Je baan opzeggen is niet opgeven, het is kiezen voor jezelf.",
-            "Adieu, DIO! Hallo, vrijheid!",
-            "Sommige deuren sluiten is de beste therapie.",
-            "Focus op waar je naartoe gaat, niet op wat je achterlaat.",
-            "De eerste stap naar ergens komen, is besluiten dat je niet blijft waar je bent.",
-            "Op naar een plek waar je energie krijgt, in plaats van dat het je energie kost.",
-            "Elke dag is een stap dichter bij de kurk die knalt.",
-            "Laat het verleden los, het is geen bestemming.",
-            "Je vleugels bestaan al. Het enige wat je hoeft te doen is vliegen.",
-            "Soms moet je een punt zetten om een nieuw hoofdstuk te kunnen beginnen.",
-            "Toxiciteit is besmettelijk. Blij dat je de kuur hebt gevonden: vrijheid."
+            "Nog efkes en dan is het 'Cege-Klaar'.",
+            "Mijn ziel was te leasen, maar het contract loopt af.",
+            "Binnenkort is de enige 'agile' beweging die ik maak die naar de voordeur.",
+            "Ze zochten een 'hands-on mentaliteit'. Binnenkort krijgen ze twee middelvingers.",
+            "Cegeka. Waar de 'ka' blijkbaar voor 'kafkaësk' staat.",
+            "Nog een paar maanden en dan kan ik eindelijk slapen zonder te dromen over Jira tickets.",
+            "Het licht aan het einde van de tunnel is geen aankomende trein, het is de uitgang.",
+            "Ik heb mijn 'out of office' al ingesteld. Voor permanent.",
+            "'t Is ni da'k ni wil werken, 't is da'k *hier* ni wil werken.",
+            "Ze zeiden 'in close cooperation', maar het voelde meer als 'in close observation'.",
+            "Mijn motivatie is gaan lopen. Ik ga ze nu achterna.",
+            "Ik dacht 'Carpe Diem', dus ik heb mijn C4 getekend.",
+            "Exit-gesprek? 't Was tof, maar niet tof genoeg."
         ];
 
         // --- APPLICATIE LOGICA ---
         document.addEventListener('DOMContentLoaded', () => {
-            const countdownTimerEl = document.getElementById('countdown-timer');
             const calendarGridEl = document.getElementById('calendar-grid');
             const quoteEl = document.getElementById('quote');
             const toxicityBarEl = document.getElementById('toxicity-bar');
             const toxicityTextEl = document.getElementById('toxicity-text');
+            const progressCounterEl = document.getElementById('progress-counter');
             
             let checkedDays = JSON.parse(localStorage.getItem('checkedDays')) || [];
             let totalDays = 0;
@@ -157,7 +165,7 @@
 
                     currentDate.setDate(currentDate.getDate() + 1);
                 }
-                updateToxicityMeter();
+                updateWidgets();
             }
 
             // Vink een dag af of aan
@@ -171,15 +179,16 @@
                     element.classList.add('day-checked');
                 }
                 localStorage.setItem('checkedDays', JSON.stringify(checkedDays));
-                updateToxicityMeter();
+                updateWidgets();
             }
             
-            // Update de toxiciteitsmeter
-            function updateToxicityMeter() {
+            // Update alle widgets die afhankelijk zijn van het aantal afgevinkte dagen
+            function updateWidgets() {
                 const checkedCount = checkedDays.length;
                 const progress = totalDays > 0 ? (checkedCount / totalDays) : 0;
+                
+                // Update toxiciteitsmeter
                 const toxicityLevel = 100 - (progress * 100);
-
                 toxicityBarEl.style.width = `${toxicityLevel}%`;
 
                 if(toxicityLevel <= 0) {
@@ -189,6 +198,9 @@
                 } else {
                      toxicityTextEl.textContent = `Niveau: ${toxicityLevel.toFixed(0)}%`;
                 }
+
+                // Update voortgangsteller
+                progressCounterEl.textContent = `${checkedCount}/${totalDays}`;
             }
 
             // Update de countdown timer
