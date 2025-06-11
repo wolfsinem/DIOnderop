@@ -136,9 +136,10 @@
 
     <script>
         // --- CONFIGURATION ---
+        const startDate = new Date('2025-06-10T00:00:00'); // **FIXED: Calendar now always starts here**
         const endDate = new Date('2025-08-31T17:00:00');
         const correctCode = 'cG9lc2pl'; // btoa('poesje')
-        const quotes = [ "Nog efkes en dan is het 'Cege-Klaar'.", "Mijn ziel was te leasen, maar het contract loopt af.", "Binnenkort is de enige 'agile' beweging die ik maak die naar de voordeur.", "Ze zochten een 'hands-on mentaliteit'. Binnenkort krijgen ze twee middelvingers.", "Cegeka. Waar de 'ka' blijkbaar voor 'kafkaësk' staat.", "Nog een paar dagen en dan kan ik eindelijk slapen zonder te dromen over Jira tickets.", "Ik ruil mijn badge in voor een leven.", "Het licht aan het einde van de tunnel is geen aankomende trein, het is de uitgang.", "Ik heb mijn 'out of office' al ingesteld. Voor permanent.", "'t Is ni da'k ni wil werken, 't is da'k *hier* ni wil werken.", "Ze zeiden 'in close cooperation', maar het voelde meer als 'in close observation'.", "Mijn motivatie is gaan lopen. Ik ga ze nu achterna.", "Ik dacht 'Carpe Diem', dus ik heb mijn C4 getekend.", "Nog een paar meetings uitzitten en dan is het gedaan met de 'corporate nonsense'.", "Exit-gesprek? 't Was tof, maar niet tof genoeg." ];
+        const quotes = [ "Nog efkes en dan is het 'Cege-Klaar'.", "Mijn ziel was te leasen, maar het contract loopt af.", "Binnenkort is de enige 'agile' beweging die ik maak die naar de voordeur.", "Mijn batterij is platter dan de pannenkoeken in de kantine.", "De dagen aftellen tot ik mijn bureauplant van de gijzeling mag bevrijden.", "Ik heb mijn opzegtermijn overleefd. Wat is de volgende challenge?", "Ze zochten een 'hands-on mentaliteit'. Binnenkort krijgen ze twee middelvingers.", "Mijn beste werk hier was mijn ontslagbrief.", "Cegeka. Waar de 'ka' blijkbaar voor 'kafkaësk' staat.", "Mijn carrièreladder stond tegen de verkeerde muur. Ik neem nu de lift naar beneden.", "Nog een paar dagen en dan kan ik eindelijk slapen zonder te dromen over Jira tickets.", "Ik ruil mijn badge in voor een leven.", "Het licht aan het einde van de tunnel is geen aankomende trein, het is de uitgang.", "Ik heb mijn 'out of office' al ingesteld. Voor permanent.", "'t Is ni da'k ni wil werken, 't is da'k *hier* ni wil werken.", "Ze zeiden 'in close cooperation', maar het voelde meer als 'in close observation'.", "Mijn motivatie is gaan lopen. Ik ga ze nu achterna.", "Ik dacht 'Carpe Diem', dus ik heb mijn C4 getekend.", "Nog een paar meetings uitzitten en dan is het gedaan met de 'corporate nonsense'.", "Exit-gesprek? 't Was tof, maar niet tof genoeg." ];
 
         // --- APPLICATION LOGIC ---
         document.addEventListener('DOMContentLoaded', () => {
@@ -172,13 +173,8 @@
                 const synth = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 1 } }).toDestination();
 
                 function generateCalendar() {
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    let currentDate = new Date(today);
-                    if (today > endDate) {
-                        currentDate = new Date(endDate);
-                        currentDate.setDate(currentDate.getDate() - 30);
-                    }
+                    let currentDate = new Date(startDate); // **FIXED: Use the fixed start date**
+                    
                     while (currentDate <= endDate) {
                         totalDays++;
                         const dayEl = document.createElement('div');
@@ -231,8 +227,9 @@
                     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
                     const startOfEndDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
                     if (startOfToday > startOfEndDay) return 0;
-                    // +1 to include today in the count
-                    return Math.round((startOfEndDay - startOfToday) / (1000 * 60 * 60 * 24)) + 1;
+                    // +1 to include today in the count if end time is later today
+                    const dayDiff = Math.round((startOfEndDay - startOfToday) / (1000 * 60 * 60 * 24));
+                    return now > end ? 0 : dayDiff;
                 }
 
                 function updateCountdown() {
@@ -244,13 +241,14 @@
                         document.getElementById('countdown-widget').innerHTML = `<div class="text-center text-2xl font-bold p-4 text-green-400">Gefeliciteerd, de ontsnapping is een feit!</div>`;
                         return;
                     }
-
-                    const days = getRemainingCalendarDays(endDate);
+                    
+                    // This now calculates days left from today until the end date, matching user expectation.
+                    const daysLeft = Math.ceil(distance / (1000 * 60 * 60 * 24));
                     const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
                     const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
                     const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-                    document.getElementById('days').textContent = String(days).padStart(2, '0');
+                    document.getElementById('days').textContent = String(daysLeft).padStart(2, '0');
                     document.getElementById('hours').textContent = String(hours).padStart(2, '0');
                     document.getElementById('minutes').textContent = String(minutes).padStart(2, '0');
                     document.getElementById('seconds').textContent = String(seconds).padStart(2, '0');
